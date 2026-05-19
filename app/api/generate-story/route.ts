@@ -18,30 +18,30 @@ async function generateStory() {
 
 Emoji: [один емодзі, який найкраще підходить до казки]`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
+      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-5',
-      max_tokens: 2000,
-      system: 'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
+      model: 'deepseek-chat',
       messages: [
+        { role: 'system', content: 'Ти талановитий дитячий письменник. Відповідай лише українською мовою.' },
         { role: 'user', content: prompt }
       ],
+      max_tokens: 2000,
+      temperature: 0.85,
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Anthropic API error: ${err}`);
+    throw new Error(`DeepSeek API error: ${err}`);
   }
 
   const data = await response.json();
-  const fullText = data.content[0].text;
+  const fullText = data.choices[0].message.content;
 
   const titleMatch = fullText.match(/Заголовок:\s*(.+)/i);
   const moralMatch = fullText.match(/Мораль:\s*(.+)/i);
@@ -61,7 +61,6 @@ Emoji: [один емодзі, який найкраще підходить до
 }
 
 export async function GET(request: Request) {
-  // Перевірка секрету (для cron job)
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
