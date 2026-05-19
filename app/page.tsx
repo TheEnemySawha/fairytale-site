@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 async function getLatestStory() {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('stories')
     .select('*')
     .order('published_at', { ascending: false })

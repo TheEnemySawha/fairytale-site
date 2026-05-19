@@ -4,6 +4,10 @@
     {
       "path": "/api/generate-story",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/generate-story",
+      "schedule": "0 17 * * *"
     }
   ]
 }

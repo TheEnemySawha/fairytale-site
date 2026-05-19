@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
 async function getStory(id: string) {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('stories')
     .select('*')
     .eq('id', id)
