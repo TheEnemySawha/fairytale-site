@@ -2,29 +2,46 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 async function generateStory() {
-  const prompt = `Напиши теплу, добру дитячу казку українською мовою для дітей від 6 років.\n\nДовжина: приблизно 600-900 слів.\nСтиль: чарівний, з гумором, позитивний.\nОбов'язково додай мораль в кінці.\n\nФормат відповіді точно такий:\n\nЗаголовок: [Назва казки]\n\n[Повний текст казки]\n\nМораль: [Коротка мораль однією-двома фразами]\n\nEmoji: [один емодзі, який найкраще підходить до казки]`;
+  const prompt = `Напиши теплу, добру дитячу казку українською мовою для дітей від 6 років.
 
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+Довжина: приблизно 600-900 слів.
+Стиль: чарівний, з гумором, позитивний.
+Обов'язково додай мораль в кінці.
+
+Формат відповіді точно такий:
+
+Заголовок: [Назва казки]
+
+[Повний текст казки]
+
+Мораль: [Коротка мораль однією-двома фразами]
+
+Emoji: [один емодзі, який найкраще підходить до казки]`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
+      'x-api-key': process.env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "grok-4",
-      messages: [
-        { role: "system", content: "Ти талановитий дитячий письменник." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.85,
+      model: 'claude-opus-4-5',
       max_tokens: 2000,
+      system: 'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
     }),
   });
 
-  if (!response.ok) throw new Error('Grok API error');
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Anthropic API error: ${err}`);
+  }
 
   const data = await response.json();
-  const fullText = data.choices[0].message.content;
+  const fullText = data.content[0].text;
 
   const titleMatch = fullText.match(/Заголовок:\s*(.+)/i);
   const moralMatch = fullText.match(/Мораль:\s*(.+)/i);
@@ -43,7 +60,14 @@ async function generateStory() {
   return { title, content, moral, cover_emoji, published_at: new Date().toISOString() };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Перевірка секрету (для cron job)
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const story = await generateStory();
     const { error } = await getSupabaseAdmin().from('stories').insert([story]);
