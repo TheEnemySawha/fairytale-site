@@ -233,6 +233,16 @@ html, body {
   margin-bottom: 2rem;
 }
 
+.dedication {
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  font-size: 1.05rem !important;
+  color: #b07abf !important;
+  margin-top: -1rem !important;
+  margin-bottom: 2rem !important;
+  letter-spacing: 0.03em;
+}
+
 .featured-story {
   background: var(--white);
   border-radius: var(--radius);
