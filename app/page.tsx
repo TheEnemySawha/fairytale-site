@@ -20,7 +20,10 @@ export default async function HomePage() {
       <div className="home-hero">
         <h1>🧚 Казковий Край</h1>
         <p>Нова казка кожного ранку — спеціально для тебе</p>
-        <p className="dedication">з любов'ю для моєї доньки Варвари та дружини Анни 🌸</p>
+        <div className="dedication-wrap">
+          <img src="/family.jpeg" alt="Варвара і Анна" className="dedication-photo" />
+          <p className="dedication">з любов'ю для моєї доньки Варвари та дружини Анни 🌸</p>
+        </div>
       </div>
 
       <div className="container" style={{ paddingTop: 0 }}>
