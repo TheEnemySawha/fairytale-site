@@ -49,9 +49,12 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <div style={{ textAlign: 'center', marginTop: '1rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/stories" className="btn-ghost">
                 📚 Всі казки
+              </Link>
+              <Link href="/top" className="btn-ghost">
+                🏆 Топ казки
               </Link>
             </div>
           </>
