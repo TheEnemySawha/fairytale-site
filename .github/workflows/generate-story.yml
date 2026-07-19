@@ -1,0 +1,31 @@
+name: Генерація щоденної казки
+on:
+  schedule:
+    - cron: '0 5 * * *'
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate-story:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Генеруємо нову казку
+        run: |
+          echo "🧚 Запускаємо генерацію казки..."
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X GET \
+            "https://kazkananich.com/api/generate-story")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "HTTP статус: $HTTP_CODE"
+          echo "Відповідь: $BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Помилка генерації казки!"
+            exit 1
+          fi
+          
+          echo "✅ Казку успішно додано!"

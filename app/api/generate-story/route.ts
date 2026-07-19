@@ -60,13 +60,7 @@ Emoji: [один емодзі, який найкраще підходить до
   return { title, content, moral, cover_emoji, published_at: new Date().toISOString() };
 }
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET() {
   try {
     const story = await generateStory();
     const { error } = await getSupabaseAdmin().from('stories').insert([story]);
