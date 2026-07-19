@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { getSupabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import StarRating from '@/app/components/StarRating';
 
 async function getStory(id: string) {
   const { data } = await getSupabase()
@@ -14,7 +15,6 @@ async function getStory(id: string) {
 
 export default async function StoryPage({ params }: { params: { id: string } }) {
   const story = await getStory(params.id);
-
   if (!story) notFound();
 
   return (
@@ -25,10 +25,7 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
           <h1 className="story-title">{story.title}</h1>
           <p className="story-date">
             {new Date(story.published_at).toLocaleDateString('uk-UA', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
             })}
           </p>
         </div>
@@ -42,12 +39,12 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
               <p>{story.moral}</p>
             </div>
           )}
+
+          <StarRating storyId={story.id} />
         </div>
       </div>
 
-      <Link href="/" className="back-link">
-        ← Повернутися на головну
-      </Link>
+      <Link href="/" className="back-link">← Повернутися на головну</Link>
     </main>
   );
 }
