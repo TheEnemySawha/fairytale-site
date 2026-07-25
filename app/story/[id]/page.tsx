@@ -3,6 +3,7 @@ import { getSupabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import StarRating from '@/app/components/StarRating';
+import LanguageSwitcher from '@/app/components/LanguageSwitcher';
 
 async function getStory(id: string) {
   const { data } = await getSupabase()
@@ -22,7 +23,6 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
       <div className="card">
         <div className="story-header">
           <span className="story-emoji">{story.cover_emoji}</span>
-          <h1 className="story-title">{story.title}</h1>
           <p className="story-date">
             {new Date(story.published_at).toLocaleDateString('uk-UA', {
               weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -31,15 +31,7 @@ export default async function StoryPage({ params }: { params: { id: string } }) 
         </div>
 
         <div className="story-body">
-          <p className="story-text">{story.content}</p>
-
-          {story.moral && (
-            <div className="story-moral">
-              <strong>💡 Мораль казки:</strong>
-              <p>{story.moral}</p>
-            </div>
-          )}
-
+          <LanguageSwitcher story={story} />
           <StarRating storyId={story.id} />
         </div>
       </div>
