@@ -13,7 +13,7 @@ jobs:
         run: |
           echo "🧚 Запускаємо генерацію казки..."
           
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -L \
             -X GET \
             "https://kazkananich.com/api/generate-story")
           
