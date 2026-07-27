@@ -16,8 +16,7 @@ jobs:
       - name: Генеруємо нову казку
         run: |
           echo "🧚 Запускаємо генерацію казки..."
-          
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -L \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
