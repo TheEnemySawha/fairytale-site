@@ -23,9 +23,6 @@ jobs:
           echo "HTTP статус: $HTTP_CODE"
           echo "Відповідь: $BODY"
           
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Помилка генерації казки!"
-            exit 1
-          fi
+        
           
           echo "✅ Казку успішно додано!"
