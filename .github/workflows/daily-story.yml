@@ -17,7 +17,7 @@ jobs:
         run: |
           echo "🧚 Запускаємо генерацію казки..."
           RESPONSE=$(curl -s -w "\n%{http_code}" -L \
-            -X POST \
+            -X GET\
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             "${{ secrets.VERCEL_APP_URL }}/api/generate-story")
