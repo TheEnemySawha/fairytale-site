@@ -56,57 +56,23 @@ jobs:
                   'emoji': emoji.group(1).strip() if emoji else '📖'
               }
 
-          print('🇺🇦 Генеруємо українську...')
-          ua_text = deepseek(
-              'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
-              'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів. Стиль чарівний позитивний.
+          ua_prompt = 'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів. Стиль чарівний позитивний.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [один емодзі]'
 
-Формат:
-Заголовок: [назва]
-
-[текст]
-
-Мораль: [мораль]
-
-Emoji: [один емодзі]'
-          )
+          print('UA Генеруємо...')
+          ua_text = deepseek('Ти талановитий дитячий письменник. Відповідай лише українською мовою.', ua_prompt)
           ua = parse(ua_text, 'Заголовок', 'Мораль')
           print(f'   {ua["title"]}')
 
-          print('🇬🇧 Перекладаємо англійською...')
-          en_text = deepseek(
-              'You are a professional children book translator. Respond only in English.',
-              f'Translate to English.
-
-Format:
-Title: [title]
-
-[text]
-
-Moral: [moral]
-
-Story:
-{ua_text}'
-          )
+          en_prompt = 'Translate to English.\n\nFormat:\nTitle: [title]\n\n[text]\n\nMoral: [moral]\n\nStory:\n' + ua_text
+          print('EN Перекладаємо...')
+          en_text = deepseek('You are a professional children book translator. Respond only in English.', en_prompt)
           en = parse(en_text, 'Title', 'Moral')
           print(f'   {en["title"]}')
 
-          print('🇪🇸 Перекладаємо іспанською...')
-          es_text = deepseek(
-              'Eres traductor profesional de libros infantiles. Responde solo en español.',
-              f'Translate to Spanish.
-
-Format:
-Título: [título]
-
-[texto]
-
-Moraleja: [moraleja]
-
-Story:
-{ua_text}'
-          )
-          es = parse(es_text, 'Título', 'Moraleja')
+          es_prompt = 'Translate to Spanish.\n\nFormat:\nTitulo: [titulo]\n\n[texto]\n\nMoraleja: [moraleja]\n\nStory:\n' + ua_text
+          print('ES Перекладаємо...')
+          es_text = deepseek('Eres traductor profesional de libros infantiles. Responde solo en espanol.', es_prompt)
+          es = parse(es_text, 'Titulo', 'Moraleja')
           print(f'   {es["title"]}')
 
           story = {
@@ -117,7 +83,7 @@ Story:
               'published_at': datetime.now(timezone.utc).isoformat()
           }
 
-          print('💾 Зберігаємо в базу...')
+          print('Зберігаємо в базу...')
           url = SUPABASE_URL + '/rest/v1/stories'
           data = json.dumps(story).encode()
           req = urllib.request.Request(url, data=data, method='POST')
@@ -127,5 +93,5 @@ Story:
           req.add_header('Prefer', 'return=minimal')
 
           with urllib.request.urlopen(req) as r:
-              print(f'✅ Готово! Статус: {r.status}')
+              print(f'Готово! Статус: {r.status}')
           EOF
