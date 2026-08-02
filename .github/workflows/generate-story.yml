@@ -10,19 +10,91 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Генеруємо нову казку
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          echo "🧚 Запускаємо генерацію казки..."
-          
-          RESPONSE=$(curl -s -w "\n%{http_code}" -L \
-            -X GET \
-            "https://kazkananich.com/api/generate-story")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
-          
-          echo "HTTP статус: $HTTP_CODE"
-          echo "Відповідь: $BODY"
-          
-        
-          
-          echo "✅ Казку успішно додано!"
+          python3 << 'EOF'
+          import os, re, json, urllib.request
+          from datetime import datetime, timezone
+
+          DEEPSEEK_KEY = os.environ['DEEPSEEK_API_KEY']
+          SUPABASE_URL = os.environ['SUPABASE_URL']
+          SUPABASE_KEY = os.environ['SUPABASE_SERVICE_ROLE_KEY']
+
+          def deepseek(system, user):
+              url = 'https://api.deepseek.com/chat/completions'
+              data = json.dumps({
+                  'model': 'deepseek-v4-flash',
+                  'messages': [
+                      {'role': 'system', 'content': system},
+                      {'role': 'user', 'content': user}
+                  ],
+                  'max_tokens': 2000,
+                  'temperature': 0.85
+              }).encode()
+              req = urllib.request.Request(url, data=data)
+              req.add_header('Content-Type', 'application/json')
+              req.add_header('Authorization', f'Bearer {DEEPSEEK_KEY}')
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())['choices'][0]['message']['content']
+
+          def parse(text, title_key, moral_key):
+              title = re.search(rf'{title_key}:\s*(.+)', text)
+              moral = re.search(rf'{moral_key}:\s*(.+)', text)
+              emoji = re.search(r'Emoji:\s*(.+)', text)
+              content = re.sub(rf'{title_key}:.+', '', text)
+              content = re.sub(rf'{moral_key}:.+', '', content)
+              content = re.sub(r'Emoji:.+', '', content).strip()
+              return {
+                  'title': title.group(1).strip() if title else '',
+                  'content': content,
+                  'moral': moral.group(1).strip() if moral else '',
+                  'emoji': emoji.group(1).strip() if emoji else '📖'
+              }
+
+          print('🇺🇦 Генеруємо українську...')
+          ua_text = deepseek(
+              'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
+              'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів. Стиль чарівний позитивний.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [один емодзі]'
+          )
+          ua = parse(ua_text, 'Заголовок', 'Мораль')
+          print(f'   {ua["title"]}')
+
+          print('🇬🇧 Перекладаємо англійською...')
+          en_text = deepseek(
+              'You are a professional children book translator. Respond only in English.',
+              f'Translate to English.\n\nFormat:\nTitle: [title]\n\n[text]\n\nMoral: [moral]\n\nStory:\n{ua_text}'
+          )
+          en = parse(en_text, 'Title', 'Moral')
+          print(f'   {en["title"]}')
+
+          print('🇪🇸 Перекладаємо іспанською...')
+          es_text = deepseek(
+              'Eres traductor profesional de libros infantiles. Responde solo en español.',
+              f'Translate to Spanish.\n\nFormat:\nTítulo: [título]\n\n[texto]\n\nMoraleja: [moraleja]\n\nStory:\n{ua_text}'
+          )
+          es = parse(es_text, 'Título', 'Moraleja')
+          print(f'   {es["title"]}')
+
+          story = {
+              'title': ua['title'], 'content': ua['content'], 'moral': ua['moral'],
+              'cover_emoji': ua['emoji'],
+              'title_en': en['title'], 'content_en': en['content'], 'moral_en': en['moral'],
+              'title_es': es['title'], 'content_es': es['content'], 'moral_es': es['moral'],
+              'published_at': datetime.now(timezone.utc).isoformat()
+          }
+
+          print('💾 Зберігаємо в базу...')
+          url = SUPABASE_URL + '/rest/v1/stories'
+          data = json.dumps(story).encode()
+          req = urllib.request.Request(url, data=data, method='POST')
+          req.add_header('Content-Type', 'application/json')
+          req.add_header('apikey', SUPABASE_KEY)
+          req.add_header('Authorization', f'Bearer {SUPABASE_KEY}')
+          req.add_header('Prefer', 'return=minimal')
+
+          with urllib.request.urlopen(req) as r:
+              print(f'✅ Готово! Статус: {r.status}')
+          EOF
