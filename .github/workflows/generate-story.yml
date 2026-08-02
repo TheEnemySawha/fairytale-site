@@ -43,9 +43,9 @@ jobs:
                   return json.loads(r.read())['choices'][0]['message']['content']
 
           def parse(text, title_key, moral_key):
-              title = re.search(rf'{title_key}:\s*(.+)', text)
-              moral = re.search(rf'{moral_key}:\s*(.+)', text)
-              emoji = re.search(r'Emoji:\s*(.+)', text)
+              title = re.search(rf'{title_key}:\\s*(.+)', text)
+              moral = re.search(rf'{moral_key}:\\s*(.+)', text)
+              emoji = re.search(r'Emoji:\\s*(.+)', text)
               content = re.sub(rf'{title_key}:.+', '', text)
               content = re.sub(rf'{moral_key}:.+', '', content)
               content = re.sub(r'Emoji:.+', '', content).strip()
@@ -56,24 +56,29 @@ jobs:
                   'emoji': emoji.group(1).strip() if emoji else '📖'
               }
 
-          ua_prompt = 'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів. Стиль чарівний позитивний.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [один емодзі]'
-
           print('UA Генеруємо...')
-          ua_text = deepseek('Ти талановитий дитячий письменник. Відповідай лише українською мовою.', ua_prompt)
+          ua_text = deepseek(
+              'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
+              'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [один емодзі]'
+          )
           ua = parse(ua_text, 'Заголовок', 'Мораль')
-          print(f'   {ua["title"]}')
+          print(f'   {ua["title"]} | {len(ua["content"])} chars')
 
-          en_prompt = 'Translate this Ukrainian fairy tale to English. Write the ACTUAL translation, not placeholders.\n\nUse this format:\nTitle: actual english title\n\nactual story text\n\nMoral: actual moral\n\nStory to translate:\n' + ua_text
           print('EN Перекладаємо...')
-          en_text = deepseek('You are a children book translator. Always write actual translated content, never write [title] or [text] as placeholders.', en_prompt)
+          en_text = deepseek(
+              'You are a professional translator of children books. Respond only in English. Write actual translated text, never use placeholder text.',
+              'Translate the following Ukrainian fairy tale into English.\nRespond ONLY with the translation using this exact format:\n\nTitle: <actual english title>\n\n<full story in english>\n\nMoral: <actual moral in english>\n\nUkrainian story:\n' + ua_text
+          )
           en = parse(en_text, 'Title', 'Moral')
-          print(f'   {en["title"]}')
+          print(f'   {en["title"]} | {len(en["content"])} chars')
 
-          es_prompt = 'Translate this Ukrainian fairy tale to Spanish. Write the ACTUAL translation, not placeholders.\n\nUse this format:\nTitulo: titulo real en espanol\n\ntexto real de la historia\n\nMoraleja: moraleja real\n\nStory to translate:\n' + ua_text
           print('ES Перекладаємо...')
-          es_text = deepseek('Eres traductor de libros infantiles. Siempre escribe contenido traducido real, nunca escribas [titulo] o [texto] como marcadores.', es_prompt)
+          es_text = deepseek(
+              'Eres traductor profesional de libros infantiles. Responde solo en espanol. Escribe texto traducido real, nunca uses texto de marcador.',
+              'Traduce el siguiente cuento ucraniano al espanol.\nResponde SOLO con la traduccion usando este formato exacto:\n\nTitulo: <titulo real en espanol>\n\n<historia completa en espanol>\n\nMoraleja: <moraleja real en espanol>\n\nCuento ucraniano:\n' + ua_text
+          )
           es = parse(es_text, 'Titulo', 'Moraleja')
-          print(f'   {es["title"]}')
+          print(f'   {es["title"]} | {len(es["content"])} chars')
 
           story = {
               'title': ua['title'], 'content': ua['content'], 'moral': ua['moral'],
