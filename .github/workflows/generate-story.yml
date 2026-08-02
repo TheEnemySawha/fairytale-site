@@ -1,4 +1,5 @@
 name: Генерація щоденної казки
+
 on:
   schedule:
     - cron: '0 5 * * *'
@@ -11,92 +12,133 @@ jobs:
   generate-story:
     runs-on: ubuntu-latest
     steps:
-      - name: Генеруємо нову казку
+      - name: Generate story
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python3 << 'EOF'
+          python3 - <<'PY'
           import os, re, json, urllib.request
           from datetime import datetime, timezone
 
-          DEEPSEEK_KEY = os.environ['DEEPSEEK_API_KEY']
-          SUPABASE_URL = os.environ['SUPABASE_URL']
-          SUPABASE_KEY = os.environ['SUPABASE_SERVICE_ROLE_KEY']
+          KEY = os.environ["DEEPSEEK_API_KEY"]
+          SB_URL = os.environ["SUPABASE_URL"].rstrip("/")
+          SB_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 
-          def deepseek(system, user):
-              url = 'https://api.deepseek.com/chat/completions'
-              data = json.dumps({
-                  'model': 'deepseek-v4-flash',
-                  'messages': [
-                      {'role': 'system', 'content': system},
-                      {'role': 'user', 'content': user}
+          def call_ai(system, user):
+              body = json.dumps({
+                  "model": "deepseek-v4-flash",
+                  "messages": [
+                      {"role": "system", "content": system},
+                      {"role": "user", "content": user}
                   ],
-                  'max_tokens': 2000,
-                  'temperature': 0.7
-              }).encode()
-              req = urllib.request.Request(url, data=data)
-              req.add_header('Content-Type', 'application/json')
-              req.add_header('Authorization', f'Bearer {DEEPSEEK_KEY}')
-              with urllib.request.urlopen(req) as r:
-                  return json.loads(r.read())['choices'][0]['message']['content']
+                  "max_tokens": 2200,
+                  "temperature": 0.8
+              }).encode("utf-8")
+              req = urllib.request.Request(
+                  "https://api.deepseek.com/chat/completions",
+                  data=body, method="POST",
+                  headers={
+                      "Content-Type": "application/json",
+                      "Authorization": f"Bearer {KEY}"
+                  }
+              )
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  data = json.loads(r.read().decode("utf-8"))
+              return data["choices"][0]["message"]["content"].strip()
 
-          def parse(text, title_key, moral_key):
-              title = re.search(rf'{title_key}:\\s*(.+)', text)
-              moral = re.search(rf'{moral_key}:\\s*(.+)', text)
-              emoji = re.search(r'Emoji:\\s*(.+)', text)
-              content = re.sub(rf'{title_key}:.+', '', text)
-              content = re.sub(rf'{moral_key}:.+', '', content)
-              content = re.sub(r'Emoji:.+', '', content).strip()
-              return {
-                  'title': title.group(1).strip() if title else '',
-                  'content': content,
-                  'moral': moral.group(1).strip() if moral else '',
-                  'emoji': emoji.group(1).strip() if emoji else '📖'
-              }
+          def take_after(label, text):
+              m = re.search(rf"{label}\s*:\s*(.+)", text, re.I)
+              return m.group(1).strip() if m else ""
 
-          print('UA Генеруємо...')
-          ua_text = deepseek(
-              'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
-              'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [один емодзі]'
+          def clean_body(text, labels):
+              out = text
+              for lb in labels:
+                  out = re.sub(rf"{lb}\s*:.*", "", out, flags=re.I)
+              return out.strip()
+
+          def is_bad(text):
+              t = text.lower()
+              return any(x in t for x in [
+                  "please provide", "please paste", "could you please",
+                  "text wasn't included", "proporciona el", "no se proporcion"
+              ])
+
+          # UA
+          print("UA generating...")
+          ua_raw = call_ai(
+              "Ти дитячий письменник. Пиши лише українською. Не відмовляйся.",
+              "Напиши теплу добру казку українською для дітей від 6 років, 600-900 слів.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [емодзі]"
           )
-          ua = parse(ua_text, 'Заголовок', 'Мораль')
-          print(f'   {ua["title"]} | {len(ua["content"])} chars')
+          if is_bad(ua_raw):
+              raise SystemExit("UA generation refused")
 
-          print('EN Перекладаємо...')
-          en_text = deepseek(
-              'You are a professional translator of children books. Respond only in English. Write actual translated text, never use placeholder text.',
-              'Translate the following Ukrainian fairy tale into English.\nRespond ONLY with the translation using this exact format:\n\nTitle: <actual english title>\n\n<full story in english>\n\nMoral: <actual moral in english>\n\nUkrainian story:\n' + ua_text
-          )
-          en = parse(en_text, 'Title', 'Moral')
-          print(f'   {en["title"]} | {len(en["content"])} chars')
+          ua_title = take_after("Заголовок", ua_raw) or take_after("Назва", ua_raw)
+          ua_moral = take_after("Мораль", ua_raw) or "Доброта перемагає."
+          ua_emoji_raw = take_after("Emoji", ua_raw)
+          ua_emoji = ua_emoji_raw.split()[0] if ua_emoji_raw else "📖"
+          ua_content = clean_body(ua_raw, ["Заголовок", "Назва", "Мораль", "Emoji"])
 
-          print('ES Перекладаємо...')
-          es_text = deepseek(
-              'Eres traductor profesional de libros infantiles. Responde solo en espanol. Escribe texto traducido real, nunca uses texto de marcador.',
-              'Traduce el siguiente cuento ucraniano al espanol.\nResponde SOLO con la traduccion usando este formato exacto:\n\nTitulo: <titulo real en espanol>\n\n<historia completa en espanol>\n\nMoraleja: <moraleja real en espanol>\n\nCuento ucraniano:\n' + ua_text
+          if not ua_title or len(ua_content) < 200:
+              print(ua_raw[:500])
+              raise SystemExit("UA story invalid")
+          print(f"UA OK: {ua_title} ({len(ua_content)} chars)")
+
+          # EN
+          print("EN translating...")
+          en_raw = call_ai(
+              "You are a children's book translator. Respond only in English. Never ask for more text.",
+              f"Translate into English. Format:\nTitle: [title]\n\n[story]\n\nMoral: [moral]\n\nStory:\n{ua_raw}"
           )
-          es = parse(es_text, 'Titulo', 'Moraleja')
-          print(f'   {es["title"]} | {len(es["content"])} chars')
+          if is_bad(en_raw):
+              en_title, en_content, en_moral = "", "", ""
+          else:
+              en_title = take_after("Title", en_raw)
+              en_moral = take_after("Moral", en_raw)
+              en_content = clean_body(en_raw, ["Title", "Moral", "Emoji"])
+          print(f"EN OK: {en_title} ({len(en_content)} chars)")
+
+          # ES
+          print("ES translating...")
+          es_raw = call_ai(
+              "Eres traductor de libros infantiles. Responde solo en espanol. Nunca pidas mas texto.",
+              f"Traduce al espanol. Formato:\nTitulo: [titulo]\n\n[cuento]\n\nMoraleja: [moraleja]\n\nCuento:\n{ua_raw}"
+          )
+          if is_bad(es_raw):
+              es_title, es_content, es_moral = "", "", ""
+          else:
+              es_title = take_after("Titulo", es_raw) or take_after("Título", es_raw)
+              es_moral = take_after("Moraleja", es_raw)
+              es_content = clean_body(es_raw, ["Titulo", "Título", "Moraleja", "Emoji"])
+          print(f"ES OK: {es_title} ({len(es_content)} chars)")
 
           story = {
-              'title': ua['title'], 'content': ua['content'], 'moral': ua['moral'],
-              'cover_emoji': ua['emoji'],
-              'title_en': en['title'], 'content_en': en['content'], 'moral_en': en['moral'],
-              'title_es': es['title'], 'content_es': es['content'], 'moral_es': es['moral'],
-              'published_at': datetime.now(timezone.utc).isoformat()
+              "title": ua_title,
+              "content": ua_content,
+              "moral": ua_moral,
+              "cover_emoji": ua_emoji,
+              "title_en": en_title or None,
+              "content_en": en_content or None,
+              "moral_en": en_moral or None,
+              "title_es": es_title or None,
+              "content_es": es_content or None,
+              "moral_es": es_moral or None,
+              "published_at": datetime.now(timezone.utc).isoformat()
           }
 
-          print('Зберігаємо в базу...')
-          url = SUPABASE_URL + '/rest/v1/stories'
-          data = json.dumps(story).encode()
-          req = urllib.request.Request(url, data=data, method='POST')
-          req.add_header('Content-Type', 'application/json')
-          req.add_header('apikey', SUPABASE_KEY)
-          req.add_header('Authorization', f'Bearer {SUPABASE_KEY}')
-          req.add_header('Prefer', 'return=minimal')
-
-          with urllib.request.urlopen(req) as r:
-              print(f'Готово! Статус: {r.status}')
-          EOF
+          print("Saving to Supabase...")
+          payload = json.dumps(story, ensure_ascii=False).encode("utf-8")
+          req = urllib.request.Request(
+              f"{SB_URL}/rest/v1/stories",
+              data=payload, method="POST",
+              headers={
+                  "Content-Type": "application/json",
+                  "apikey": SB_KEY,
+                  "Authorization": f"Bearer {SB_KEY}",
+                  "Prefer": "return=minimal"
+              }
+          )
+          with urllib.request.urlopen(req, timeout=30) as r:
+              print(f"Saved OK: HTTP {r.status} | {ua_title}")
+          PY
