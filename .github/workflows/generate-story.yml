@@ -34,7 +34,7 @@ jobs:
                       {'role': 'user', 'content': user}
                   ],
                   'max_tokens': 2000,
-                  'temperature': 0.85
+                  'temperature': 0.7
               }).encode()
               req = urllib.request.Request(url, data=data)
               req.add_header('Content-Type', 'application/json')
@@ -63,15 +63,15 @@ jobs:
           ua = parse(ua_text, 'Заголовок', 'Мораль')
           print(f'   {ua["title"]}')
 
-          en_prompt = 'Translate to English.\n\nFormat:\nTitle: [title]\n\n[text]\n\nMoral: [moral]\n\nStory:\n' + ua_text
+          en_prompt = 'Translate this Ukrainian fairy tale to English. Write the ACTUAL translation, not placeholders.\n\nUse this format:\nTitle: actual english title\n\nactual story text\n\nMoral: actual moral\n\nStory to translate:\n' + ua_text
           print('EN Перекладаємо...')
-          en_text = deepseek('You are a professional children book translator. Respond only in English.', en_prompt)
+          en_text = deepseek('You are a children book translator. Always write actual translated content, never write [title] or [text] as placeholders.', en_prompt)
           en = parse(en_text, 'Title', 'Moral')
           print(f'   {en["title"]}')
 
-          es_prompt = 'Translate to Spanish.\n\nFormat:\nTitulo: [titulo]\n\n[texto]\n\nMoraleja: [moraleja]\n\nStory:\n' + ua_text
+          es_prompt = 'Translate this Ukrainian fairy tale to Spanish. Write the ACTUAL translation, not placeholders.\n\nUse this format:\nTitulo: titulo real en espanol\n\ntexto real de la historia\n\nMoraleja: moraleja real\n\nStory to translate:\n' + ua_text
           print('ES Перекладаємо...')
-          es_text = deepseek('Eres traductor profesional de libros infantiles. Responde solo en espanol.', es_prompt)
+          es_text = deepseek('Eres traductor de libros infantiles. Siempre escribe contenido traducido real, nunca escribas [titulo] o [texto] como marcadores.', es_prompt)
           es = parse(es_text, 'Titulo', 'Moraleja')
           print(f'   {es["title"]}')
 
