@@ -2,6 +2,8 @@ name: Генерація щоденної казки
 on:
   schedule:
     - cron: '0 5 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 15 * * *'
     - cron: '0 17 * * *'
   workflow_dispatch:
 
@@ -57,7 +59,16 @@ jobs:
           print('🇺🇦 Генеруємо українську...')
           ua_text = deepseek(
               'Ти талановитий дитячий письменник. Відповідай лише українською мовою.',
-              'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів. Стиль чарівний позитивний.\n\nФормат:\nЗаголовок: [назва]\n\n[текст]\n\nМораль: [мораль]\n\nEmoji: [один емодзі]'
+              'Напиши теплу добру дитячу казку українською для дітей від 6 років. Довжина 600-900 слів. Стиль чарівний позитивний.
+
+Формат:
+Заголовок: [назва]
+
+[текст]
+
+Мораль: [мораль]
+
+Emoji: [один емодзі]'
           )
           ua = parse(ua_text, 'Заголовок', 'Мораль')
           print(f'   {ua["title"]}')
@@ -65,7 +76,17 @@ jobs:
           print('🇬🇧 Перекладаємо англійською...')
           en_text = deepseek(
               'You are a professional children book translator. Respond only in English.',
-              f'Translate to English.\n\nFormat:\nTitle: [title]\n\n[text]\n\nMoral: [moral]\n\nStory:\n{ua_text}'
+              f'Translate to English.
+
+Format:
+Title: [title]
+
+[text]
+
+Moral: [moral]
+
+Story:
+{ua_text}'
           )
           en = parse(en_text, 'Title', 'Moral')
           print(f'   {en["title"]}')
@@ -73,7 +94,17 @@ jobs:
           print('🇪🇸 Перекладаємо іспанською...')
           es_text = deepseek(
               'Eres traductor profesional de libros infantiles. Responde solo en español.',
-              f'Translate to Spanish.\n\nFormat:\nTítulo: [título]\n\n[texto]\n\nMoraleja: [moraleja]\n\nStory:\n{ua_text}'
+              f'Translate to Spanish.
+
+Format:
+Título: [título]
+
+[texto]
+
+Moraleja: [moraleja]
+
+Story:
+{ua_text}'
           )
           es = parse(es_text, 'Título', 'Moraleja')
           print(f'   {es["title"]}')
